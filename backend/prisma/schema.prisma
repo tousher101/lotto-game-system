@@ -13,13 +13,15 @@ model User {
   id Int @id @default(autoincrement())
   name String
   email String @unique
+  phone String @unique
   password String 
   userName String @unique
   role Role
   createdAt DateTime @default(now())
-  branch Branch @relation(fields:[branchId],references:[id])
-  branchId Int
-
+  branch Branch? @relation(fields:[branchId],references:[id])
+  branchId Int?
+  agent Agent[]
+  transaction Transaction[]
   
 }
 
@@ -46,14 +48,14 @@ model Agent {
   branch Branch @relation(fields:[branchId],references:[id])
   branchId Int
   cashier User? @relation(fields:[cashierId],references:[id])
-  cashierId? Int
-  assignStatus AssignStatus default(NOT_ASSIGNED)
+  cashierId Int?
+  assignStatus AssignStatus @default(NOT_ASSIGNED)
   betting Betting[]
   isPaid Boolean @default(true)
   transaction Transaction[]
   commission Float
   betNumber BetNumber[]
-  @@index([branchId], [cashierId])
+  @@index([branchId,cashierId])
 }
 
 enum agentStatus {
@@ -76,8 +78,9 @@ model Branch {
   betting Betting[]
   transaction Transaction[]
   hotNumber HotNumber[]
-  betSession BetSession @unique
-  drewSession DrewSession @unique
+  betSession BetSession []
+  drewSession DrewSession []
+  drewResult DrewResult[]
 }
 
 model Drewtime {
@@ -85,12 +88,12 @@ model Drewtime {
   time Int
   timePost String
   betting Betting[]
-  drewResult DrewResult? @unique
+  drewResult DrewResult[]
   transaction Transaction[]
   betNumber BetNumber[]
   hotNumber HotNumber[]
-  betSession BetSession @unique
-  drewSession DrewSession @unique
+  betSession BetSession []
+  drewSession DrewSession []
 
   createdAt DateTime @default(now())
 }
@@ -106,8 +109,6 @@ model Betting {
   agentId Int
   branch Branch @relation(fields:[branchId], references:[id])
   branchId Int
-  drewResult DrewResult? @relation(fields:[drewResultId], references:[id])
-  drewResultId Int?
   qrPayload String @unique
   isBetting Boolean @default(false)
   betSession BetSession @relation(fields:[betSessionId],references:[id])
@@ -116,9 +117,9 @@ model Betting {
   createdAt DateTime @default(now())
 
 
-  @@index([drewtimeId,agentId])
-  @@index([branchId,drewResultId])
-  @@index([transactionId])
+  @@index([agentId])
+  @@index([branchId])
+  
 }
 
 
@@ -129,21 +130,21 @@ model BetNumber {
   amount Float
   bettingOption BettingOption
   betting Betting? @relation(fields:[bettingId], references:[id])
-  bettingId? Int
+  bettingId Int?
   agent Agent @relation(fields:[agentId],references:[id])
   agentId Int
   drewTime Drewtime @relation(fields:[drewTimeId],references:[id])
   drewTimeId Int
  
 
-  @@index[bettingId, agentId]
-  @@index[drewTimeId,drewResultId]
+  @@index([bettingId, agentId])
+  @@index([drewTimeId])
 }
 
 enum BettingOption {
-  L-2
-  S-3
-  RS-3
+  L_2
+  S_3
+  RS_3
 }
 
 model DrewResult {
@@ -152,33 +153,33 @@ model DrewResult {
   winNumberLast2 String
   drewTime Drewtime @relation(fields:[drewTimeId],references:[id])
   drewTimeId Int 
-  betting Betting[]
   drewSession DrewSession @relation(fields:[drewSessionId],references:[id])
-  drewSessionId Int 
+  drewSessionId Int @unique
   branch Branch @relation(fields:[branchId],references:[id])
   branchId Int
   createdAt DateTime @default(now())
 
 
-  @@index[drewTimeId,agentId]
+  @@index([drewTimeId,drewSessionId])
+  @@index([branchId])
  
 }
 
 model DrewSession {
   id Int @id @default(autoincrement())
-  drewTime drewtime @relation(fields:[drewTimeId],references:[id])
+  drewTime Drewtime @relation(fields:[drewTimeId],references:[id])
   drewTimeId Int
   branch Branch @relation(fields:[branchId],references:[id])
   branchId Int
   drewSessionTime DateTime @default(now())
   drewSessionStatus DrewSessionStatus @default(ACTIVE)
-  drewResult DrewResult @unique
-  transaction Transection[]
+  drewResult DrewResult? 
+  transaction Transaction []
   createdAt DateTime @default(now())
   
 }
 
-enum {
+enum DrewSessionStatus {
   ACTIVE
   CLOSED
 }
@@ -188,7 +189,7 @@ model Transaction {
   totalInAmount Float?
   totalOutAmount Float?
   grossRemit Float?
-  grossPayable Flot?
+  grossPayable Float?
   netRmiteAmount Float?
   netPayableAmount Float?
   debitCredit Float?
@@ -200,17 +201,18 @@ model Transaction {
   drewTime Drewtime @relation(fields:[drewTimeId],references:[id])
   drewTimeId Int
   agentWining AgentWining[]
-  user User @relation(fields:[userId],references:[id])
-  userId Int
   betSession BetSession @relation(fields:[betSessionId],references:[id])
   betSessionId Int
   drewSession DrewSession@relation(fields:[drewSessionId],references:[id])
   drewSessionId Int
   comissionAmount Float 
   bettingFee Float
-  createdAt DateTime @default(now)
+  user User @relation(fields:[userId],references:[id])
+  userId Int
+  createdAt DateTime @default(now())
   @@index([agentId])
-  @@index([branchId])
+  @@index([branchId,betSessionId])
+  @@index([drewSessionId,drewTimeId])
 }
 
 enum transactionStatus {
@@ -226,6 +228,8 @@ model AgentWining {
   betTrxId String
   transaction Transaction @relation(fields:[transactionId],references:[id])
   transactionId Int
+  createdAt DateTime @default(now())
+  @@index([transactionId])
 }
 
 model HotNumber {
@@ -252,11 +256,11 @@ model BetSession{
   drewTimeId Int
   branch Branch @relation(fields:[branchId],references:[id])
   branchId Int
-  betSessionTime DateTime default(now())
+  betSessionTime DateTime @default(now())
   betSessionStatus BetSessionStatus @default(ACTIVE)
   hotNumber HotNumber[]
   betting Betting []
-  transaction Transection[]
+  transaction Transaction []
   createdAt DateTime @default(now())
  
 }

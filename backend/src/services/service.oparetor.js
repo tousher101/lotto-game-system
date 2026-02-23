@@ -460,7 +460,7 @@ if(!isWin) continue;
     // });
 
     const betCount= await tx.betting.count({
-      where:{agentId:agent.id,drewTimeId,branchId:loginOparetor.branchId}
+      where:{agentId:agent.id,drewTimeId,branchId:loginOparetor.branchId,isVoid:false}
     })
 
     if(betCount>0){await prisma.agent.updateMany({
@@ -472,7 +472,7 @@ if(!isWin) continue;
     
     const totalRemitResult=  await tx.betting.aggregate({
       _sum:{totalBetAmount:true},
-      where:{agentId:Number(agent.id),drewTimeId,branch:loginOparetor.branchId}
+      where:{agentId:Number(agent.id),drewTimeId,branch:loginOparetor.branchId,isVoid:false}
     });
     const totalRemit = totalRemitResult._sum.totalBetAmount || 0;
     let betingFee=0
@@ -483,7 +483,7 @@ if(!isWin) continue;
     const debitCredit=netRemit-agentData.totalWin
     const totalInAmountResult=  await tx.betting.aggregate({
       _sum:{totalBetAmount:true},
-      where:{drewTimeId,branchId:loginOparetor.branchId}
+      where:{drewTimeId,branchId:loginOparetor.branchId,isVoid:false}
     });
     const totalInAmount=totalInAmountResult._sum.totalBetAmount||0;
    
@@ -503,7 +503,8 @@ if(!isWin) continue;
       drewTimeId,
       userId:agent.cashierId,
       drewSessionId:activeDrewSession.id,
-      betSeesionId:cutOffBetSession.id
+      betSeesionId:cutOffBetSession.id,
+      userId: agent.cashierId
 
     }
    })

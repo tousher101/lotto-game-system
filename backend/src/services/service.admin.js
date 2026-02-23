@@ -201,7 +201,8 @@ const editDrawTime= async({body,params})=>{
 const getTotalInOutReportByBranch=async(data)=>{
     let { date } = data;
     let drewTimeId=Number(data.drewTimeId);
-    let branchId=Number(data.branchId)
+    let branchId=Number(data.branchId);
+    
 
       branchId = branchId ? Number(branchId) : 1
       drewTimeId = drewTimeId ? Number(drewTimeId) : 1
@@ -239,70 +240,49 @@ const getTotalInOutReportByBranch=async(data)=>{
         orderBy:{ createdAt:"desc" }
       });
 
-      const totalInOutAmountByCashier= await prisma.transaction.findMany({
-        where:{createdAt:{gte:startDate,lte:endDate},branchId,drewTimeId,user:{role:'CASHIER'}},
-        select:{
-            totalInAmount:true,totalOutAmount:true,
-            user:{
-                select:{
-                    id:true,
-                    name:true
-                }
-            },
-        },
-        orderBy:{ createdAt:"desc" }
+      const reportData= await prisma.transaction.groupBy({
+        by:['userId','status'],
+        where:{createdAt:{gte:start,lte:end},branchId,drewTimeId,user:{role:'CASHIER'}},
+        _sum:{netPayableAmount:true,netRmiteAmount:true}
       });
 
-      
+      const report= {};
+      reportData.forEach(item=>{if(!report[item.userId]){
+        report[item.userId]={
+             totalIn: 0,
+            totalOut: 0,
+            pendingIn: 0,
+            pendingOut: 0,
+            settledIn: 0,
+            settledOut: 0
+        };}
+    const sumIn = item._sum.netRmiteAmount || 0;
+  const sumOut = item._sum.netPayableAmount || 0;
 
-      return {totalInOutAmount, totalInOutAmountByCashier}
-};
+  report[item.userId].totalIn += sumIn;
+  report[item.userId].totalOut += sumOut;
 
-const totalInOutDetailsReportByCashier= async({params,query})=>{
-    const {date}=query;
-    const userId=Number(params.userId)
-    const branchId=Number(query.branchId)
-    const drewTimeId=Number(query.drewTimeId)
-        let start, end;
+  if (item.status === 'PENDING') {
+    report[item.userId].pendingIn += sumIn;
+    report[item.userId].pendingOut += sumOut;
+  }
 
-        if (date) {
-        start = new Date(date);
-        start.setHours(0, 0, 0, 0);
+  if (item.status === 'SETTELED') {
+    report[item.userId].settledIn += sumIn;
+    report[item.userId].settledOut += sumOut;
+  }
 
-        end = new Date(date);
-        end.setHours(23, 59, 59, 999);
-        } else {
-        start = new Date();
-        start.setHours(0, 0, 0, 0);
+    });
 
-        end = new Date();
-        end.setHours(23, 59, 59, 999);
-        }
+    const users = await prisma.user.findMany({
+  where: { id: { in: Object.keys(report).map(Number) } },
+  select: { id: true, name: true }
+});
 
-     const totalReceivedByCashier= await prisma.transaction.findFirst({
-         where:{branchId,drewTimeId,userId,user:{role:'CASHIER'},status:'SETTELED'},
-         select:{netRimteAmount}
-      });
-
-      const totalPaidByCashier= await prisma.transaction.findFirst({
-        where:{branchId,drewTimeId,userId,user:{role:'CASHIER'},status:'SETTELED'},
-         select:{netPayableAmount}
-      });
-
-      const totalPendingRecivedByCashier=await prisma.transaction.findFirst({
-         where:{branchId,drewTimeId,userId,user:{role:'CASHIER'},status:'PENDING'},
-         select:{netRimteAmount}
-      });
-
-      const totalPendingPaidByCashier= await prisma.transaction.findFirst({
-        where:{branchId,drewTimeId,userId,user:{role:'CASHIER'},status:'PENDING'},
-         select:{netPayableAmount}
-      });
-
-      return{totalPaidByCashier,totalReceivedByCashier,totalPendingPaidByCashier,totalPendingRecivedByCashier}
+return {totalInOutAmount, users, report}
+}
 
 
-};
 
 const getAllAgentReport=async(data)=>{
     let { branchId, drewTimeId, date,userId } = data
@@ -360,27 +340,27 @@ const getAgentDetailsReport=async({params,query})=>{
 
         const totalL2Bet= await prisma.betNumber.aggregate({
             _sum:{amount},
-            where:{agentId:agent.id,bettingOption:'L-2',drewTimeId:drewTimeId}
+            where:{agentId:agent.id,bettingOption:'L_2',drewTimeId:drewTimeId}
         });
 
            const totalS2Bet= await prisma.betNumber.aggregate({
             _sum:{amount},
-            where:{agentId:agent.id,bettingOption:'S-3',drewTimeId:drewTimeId}
+            where:{agentId:agent.id,bettingOption:'S_3',drewTimeId:drewTimeId}
         });
 
            const totalRS3Bet= await prisma.betNumber.aggregate({
             _sum:{amount},
-            where:{agentId:agent.id,bettingOption:'RS-3',drewTimeId:drewTimeId}
+            where:{agentId:agent.id,bettingOption:'RS_3',drewTimeId:drewTimeId}
         });
 
         const L2count= await prisma.betNumber.count({
-            where:{agentId:agent.id, bettingOption:'L-2',drewTimeId:drewTimeId}
+            where:{agentId:agent.id, bettingOption:'L_2',drewTimeId:drewTimeId}
         });
         const S3count= await prisma.betNumber.count({
-            where:{agentId:agent.id, bettingOption:'S-3',drewTimeId:drewTimeId}
+            where:{agentId:agent.id, bettingOption:'S_3',drewTimeId:drewTimeId}
         })
          const RS3count= await prisma.betNumber.count({
-            where:{agentId:agent.id, bettingOption:'RS-3',drewTimeId:drewTimeId}
+            where:{agentId:agent.id, bettingOption:'RS_3',drewTimeId:drewTimeId}
         })
 
         if(!agent){return res.status(404).json({msg:'Agent Not Found'})}
@@ -412,14 +392,14 @@ const getAgentDetailsReport=async({params,query})=>{
 
 const getAllBranches= async()=>{
     const allBranches= await prisma.branch.findMany({
-        select:{name:true,code:true}
+        select:{id: true,name:true}
     })
     return allBranches
 };
 
 const getAllDrawTime= async()=>{
     const allDrawTime= await prisma.drewtime.findMany({
-        select:{
+        select:{ id:true,
             time:true, timePost:true
         }
     });
@@ -449,44 +429,28 @@ const getAllCashierByBranch=async(data)=>{
 };
 
 const getAllAgentByBranch=async(data)=>{
+    const page=Number(data.page)||1;
+    const limit=Number(data.limit)||100;
+    const skip=(page-1)*limit
      const {branchId}=data
     const AllAgent= await prisma.agent.findMany({
         where:{branchId},
         select:{
             id:true,name:true, gadgetId:true, assignStatus:true,phone:true,address:true,createdAt:true,updatedAt:true,userName:true,
-            agentCode:true,
-        }
+            agentCode:true,cashier:{select:{name:true}}
+        },
+        skip:skip,
+        take:limit,
+        
     });
      return AllAgent
 };
 
-const getAllAssignedAgentByCashier=async(data)=>{
-    const {cashierId,branchId}=data;
-    const allAssignedAgent= await prisma.agent.findMany({
-        where:{branchId,cashierId, assignStatus:"ASSIGNED"},
-          select:{
-            id:true,name:true, gadgetId:true, assignStatus:true,phone:true,address:true,createdAt:true,updatedAt:true,userName:true,
-            agentCode:true,
-            }
-    });
-    return allAssignedAgent
-};
 
-const getAllUnassignedAgentByCashier=async(data)=>{
-    const {branchId}=data;
-    const allUnassignedAgent= await prisma.agent.findMany({
-        where:{branchId, assignStatus:"NOT_ASSIGNED"},
-          select:{
-            id:true,name:true, gadgetId:true, assignStatus:true,phone:true,address:true,createdAt:true,updatedAt:true,userName:true,
-            agentCode:true,
-                }
-    });
-    return allUnassignedAgent
-}
 
 
 module.exports={addOparetor,addHeadCashier,addCashier,getAllOparetor,getAllHeadCashier,getAllCashier,deleteOparetor,deleteHeadCashier,
     deleteCashier,addNewBranch,editBranch,addNewDrawTime,editDrawTime, getTotalInOutReportByBranch,getAllAgentReport,
-    getAgentDetailsReport,getAllBranches,getAllDrawTime,getAllCashierByBranch,getAllAgentByBranch,getAllAssignedAgentByCashier,
-    getAllUnassignedAgentByCashier,totalInOutDetailsReportByCashier
+    getAgentDetailsReport,getAllBranches,getAllDrawTime,getAllCashierByBranch,getAllAgentByBranch,
+    
 }

@@ -12,6 +12,7 @@ const bettingByAgent=async({user,body})=>{
     if(!loginAgent){throw{message:'Agent Not Found',status:404}}
     if(loginAgent.status==='INACTIVE'){throw{message:'Gadget is blocked! Please contact with cashier',status:401}}
     if(loginAgent.isPaid===false){throw{message:'Gadget is blocked! Please pay your all remittance', status:401}}
+    if(loginAgent.assignStatus==='NOT_ASSIGNED'){throw {message:'Your are Not Assigned Agent',status:401}}
     if(!drewTimeId||!Array.isArray(number)){throw{message:'All Fields Required', status:400}}
 
     const activeBetSession= await prisma.betSession.findFirst({
@@ -72,7 +73,7 @@ const bettingByAgent=async({user,body})=>{
         }
     });
     
-    return {message:"Bet Create Successfully",bettingId:betting.id}
+    return {message:"Bet Create Successfully",betting}
 
     });
     return result
@@ -194,8 +195,8 @@ const getAgentInfo= async(data)=>{
     if(!loginAgent){throw{message:'Agent Not Found',status:404}}
     const agentData= await prisma.agent.findFirst({
         where:{id:loginAgent.id},
-        select:{
-            name:true,gadgetId:true,phone:true,agentCode:true,status:true,
+        select:{ id:true,
+            name:true,gadgetId:true,phone:true,agentCode:true,status:true,email:true, assignStatus:true,
             branch:{
                 select:{
                     name:true
@@ -210,39 +211,71 @@ const getAgentTransection=async({body,user})=>{
     const {agentId}=user;
     const {date}=body;
     let {drewTimeId}=body;
-     let start, end;
 
-        if (date) {
-        start = new Date(date);
-        start.setHours(0, 0, 0, 0);
+    let start = new Date();
+  let end = new Date();
 
-        end = new Date(date);
-        end.setHours(23, 59, 59, 999);
-        } else {
-        start = new Date();
-        start.setHours(0, 0, 0, 0);
+  if (date) {
+    start = new Date(date);
+    end = new Date(date);
+  }
 
-        end = new Date();
-        end.setHours(23, 59, 59, 999);
-        }
-        drewTimeId=drewTimeId?Number(drewTimeId):1
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+    drewTimeId=drewTimeId?Number(drewTimeId):1
     const loginAgent= await prisma.agent.findUnique({
         where:{id:agentId}
     });
 
     if(!loginAgent){throw{message:'Agent Not Found', status:404}}
+
     const winNumber= await prisma.drewResult.findFirst({
         where:{drewTimeId:Number(drewTimeId),createdAt:{gte:start,lte:end}},
         select:{winNumberStright}
     });
 
+   const totalBetting= await prisma.betting.aggregate({
+    _sum:{totalBetAmount:true},
+    _count:{_all:true},
+    where:{agentId:loginAgent.id, drewTimeId, createdAt:{gte:start,lte:end},branchId:loginAgent.branchId}
+   });
+   const totalBetAmount= totalBetting._sum.totalBetAmount||0;
+   const totalBetCount= totalBetting._count._all||0;
+   const comission=loginAgent.commission
+   const comissionAmount= Math.round(totalBetAmount*comission/100)
+   let bettingFee=0;
+   if(totalBetCount>0){bettingFee=10}
+   const beforeNetBettingAmount= totalBetAmount-comissionAmount;
+   const netBettingAmount=beforeNetBettingAmount+bettingFee;
+
     const transectionHistory= await prisma.transaction.findFirst({
-        where:{agentId:loginAgent.id,branchId:loginAgent.branchId, createdAt:{gte:start,lte:end},drewTimeId:Number(drewTimeId)},
+        where:{agentId:loginAgent.id,branchId:loginAgent.branchId, createdAt:{gte:start,lte:end},drewTimeId:Number(drewTimeId),branchId:loginAgent.branchId},
         select:{
-            grossRemit:true,grossPayable:true,netRemitAmount:true,netPayableAmount:true,status:true,agentWining:true
+            netPayableAmount:true,status:true,agentWining:true
         }
     });
-    return {transectionHistory,winNumber}
+    const totalNumBetting= await prism.betNumber.groupBy({
+        by:['bettingOption'],
+        where:{agentId,drewTimeId,branchId:loginCashier.branchId,createdAt:{gte:start,lte:end}},
+        _count:{_all:true},
+        _sum:{amount}
+    });
+
+    const last2= totalNumBetting.find(i=>i.bettingOption==='L_2');
+    const totalAmountOfLast2=last2?._sum.amount||0;
+    const totalCountOfLast2=last2?._count._all||0;
+
+    const stright=totalNumBetting.find(i=>i.bettingOption==='S_3');
+    const totalAmountOfStright=stright?._sum.amount||0;
+    const totalCounttOfStright=stright?._count._all||0;
+
+    const rumble=totalNumBetting.find(i=>i.bettingOption==='RS_3');
+    const totalAmountOfRumble=rumble?._sum.amount||0;
+    const totalcountOfRumble=rumble?._count._all||0;
+    return {transectionHistory,winNumber, totalBetAmount,totalBetCount,comission,comissionAmount,bettingFee, netBettingAmount,
+
+    }
 };
 
 

@@ -26,9 +26,8 @@ route.get('/agentdetailsreport/:id',verification,roleVerification('ADMIN'),admin
 route.get('/getallbranched',verification,roleVerification('ADMIN'),adminController.getAllBranchesControll);
 route.get('/getalldrawtime',verification,roleVerification('ADMIN'),adminController.getAllDrawTimeControll);
 route.get('/getallcashierbybranch',verification,roleVerification('ADMIN'),adminController.getAllCashierByBranchControll);
-route.get('/allassignedagent',verification,roleVerification('ADMIN'),adminController.allAssignedAgentControll);
-route.get('allunassignedagent',verification,roleVerification('ADMIN'),adminController.allUnassignedAgentControll);
-route.get('/totalinoutdetailsbycashier',verification,roleVerification('ADMIN'),adminController.totalInOutDetailsReportByCashierControll);
+
+
 
 
 

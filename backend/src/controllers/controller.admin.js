@@ -100,12 +100,7 @@ const getTotalInOutReportByBranchControll=async(req,res)=>{
     }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
 };
 
-const totalInOutDetailsReportByCashierControll=async(req,res)=>{
-    try{
-        const result= await serviceAdmin.totalInOutDetailsReportByCashier({params:req.params,query:req.query})
-        res.status(200).json(result)
-    }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
-}
+
 
 const getAllAgentReportControll= async(req,res)=>{
     try{
@@ -149,19 +144,7 @@ const getAllAgentByBranchControll=async(req,res)=>{
     }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
 };
 
-const allAssignedAgentControll= async(req,res)=>{
-    try{
-        const result= await serviceAdmin.getAllAssignedAgentByCashier(req.query)
-        res.status(200).json(result)
-    }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
-};
 
-const allUnassignedAgentControll= async(req,res)=>{
-    try{
-        const result= await serviceAdmin.getAllUnassignedAgentByCashier(req.query)
-       res.status(200).json(result)
-    }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
-}
 
 
 
@@ -169,6 +152,6 @@ const allUnassignedAgentControll= async(req,res)=>{
 module.exports={addOparetorControll,addHeadCashierControll,addCashierControll,getAllOparetorControll,getAllHeadCashierControll,
 getAllCashierControll,deleteOparetorControll,deleteHeadCashierControll,deleteCashierControll,addNewBranchControll, editBranchControll,
 addNewDrawTimeControll,editDrawTimeControll,getAllAgentByBranchControll ,getTotalInOutReportByBranchControll,getAllAgentReportControll,
-getAgentDetailsReportControll,getAllBranchesControll, getAllDrawTimeControll,getAllCashierByBranchControll,allAssignedAgentControll,allUnassignedAgentControll,
-totalInOutDetailsReportByCashierControll
+getAgentDetailsReportControll,getAllBranchesControll, getAllDrawTimeControll,getAllCashierByBranchControll
+
 }
