@@ -13,19 +13,17 @@ route.get('/getalloparetor',verification,roleVerification('ADMIN'),adminControll
 route.get('/getallheadcashier',verification,roleVerification('ADMIN'),adminController.getAllHeadCashierControll);
 route.get('/getallcashier',verification,roleVerification('ADMIN'),adminController.getAllCashierControll);
 route.delete('/deleteopretor/:id',verification,roleVerification('ADMIN'),adminController.deleteOparetorControll);
-route.delete('deleteheadcashier/:id',verification,roleVerification('ADMIN'),adminController.deleteHeadCashierControll);
-route.delete('deletecashier/:id',verification,roleVerification('ADMIN'),adminController.deleteCashierControll);
+route.delete('/deleteheadcashier/:id',verification,roleVerification('ADMIN'),adminController.deleteHeadCashierControll);
+route.delete('/deletecashier/:id',verification,roleVerification('ADMIN'),adminController.deleteCashierControll);
 route.put('/addnewbranch',verification,roleVerification('ADMIN'),adminController.addNewBranchControll);
-route.put('/editbranch/:id',verification,roleVerification('ADMIN'),adminController.editBranchControll);
 route.put('/addnewdrawtime',verification,roleVerification('ADMIN'),adminController.addNewDrawTimeControll);
 route.put('/editdrawtime/:id',verification,roleVerification('ADMIN'),adminController.editDrawTimeControll);
-route.get('/getallagent',verification,roleVerification('ADMIN'),adminController.getAllAgentByBranchControll);
 route.get('/gettotalinoutreportbybranch',verification,roleVerification('ADMIN'),adminController.getTotalInOutReportByBranchControll);
 route.get('/getallagentreport',verification,roleVerification('ADMIN'),adminController.getAllAgentReportControll);
 route.get('/agentdetailsreport/:id',verification,roleVerification('ADMIN'),adminController.getAgentDetailsReportControll);
 route.get('/getallbranched',verification,roleVerification('ADMIN'),adminController.getAllBranchesControll);
-route.get('/getalldrawtime',verification,roleVerification('ADMIN'),adminController.getAllDrawTimeControll);
-route.get('/getallcashierbybranch',verification,roleVerification('ADMIN'),adminController.getAllCashierByBranchControll);
+route.get('/getalldrawtime',verification,adminController.getAllDrawTimeControll);
+
 
 
 

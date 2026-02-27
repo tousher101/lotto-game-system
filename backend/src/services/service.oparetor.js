@@ -1,93 +1,95 @@
 
-const { body } = require('express-validator');
 const prisma=require('../lib/prisma');
 const bcrypt=require('bcryptjs');
 const getParmutation=require('../lib/rumbleCreate')
 
 const addAgent=async({body,user})=>{
-    const {name,address,phone,email,gadgetId, userName, password,agentCode}=body;
-    const {oparetor}=user;
-    if(!oparetor||!oparetor.branchId){throw{messgae:'Oparetor Not Found',status:404}}
-    if(!name||!address||!phone||!gadgetId||!userName||!password||!agentCode){throw {message:'All Field Required',status:400}}
+    const {name,address,phone,email,gadgetId, userName, password,agentCode,comission,imeino}=body;
+    const {id}=user;
+    const logingOparetor= await prisma.user.findUnique({
+      where:{id:Number(id)}
+    })
+    if(!logingOparetor){throw{message:'Oparetor Not Found',status:404}}
+    if(!name||!address||!phone||!gadgetId||!userName||!password||!agentCode||!comission||!imeino){throw {message:'All Field Required',status:400}}
     const existing= await prisma.agent.findFirst({
         where:{OR:[{phone},{userName}]}
     });
     if(existing){throw{message:'Agent already Exisit' ,status:409}}
     const salt= await bcrypt.genSalt(10);
     const secPass= await bcrypt.hash(password,salt);
-    try{
+
     await prisma.agent.create({
         data:{
-            name,address,phone,email,gadgetId,userName,branchId:oparetor.branchId,password:secPass,agentCode
+            name,address,phone,email,gadgetId,userName,branchId:logingOparetor.branchId,password:secPass,agentCode, commission:parseFloat(comission), imeino
         }
     });
-        }catch (err){throw{message:'Agent Not Created', status:500}}
+        
 
-  return {message:'Agent Added Successfully'}
+  return {message:'Agent Added Successfully', success:true}
 
 };
 
-const getAllAgentByBranch= async(data)=>{
-    const {oparetor}=data
+const getAllAgentByBranch= async({user, query})=>{
+    const {id}=user
+    const page=Number(query.page)||1;
+    const limit=Number(query.limit)||100;
+    const skip=(page-1)*limit
+      const loginOparetor= await prisma.user.findUnique({
+      where:{id:Number(id)}
+    });
+  const totalAgent= await prisma.agent.count({
+    where:{branchId:loginOparetor.branchId}
+  })
+ 
+    if(!loginOparetor){throw{message:'Oparetor Not Found', status:404}}
     const AllAgent= await prisma.agent.findMany({
-        where:{branchId:oparetor.branchId},
+        where:{branchId:loginOparetor.branchId},
         select:{
-            id:true,name:true, gadgetId:true, assignStatus:true,phone:true,address:true,createdAt:true,updatedAt:true,userName:true,
-            agentCode:true,
-        }
+            id:true,name:true, assignStatus:true,phone:true,address:true,createdAt:true,updatedAt:true,userName:true,
+            agentCode:true, status:true
+        },
+        skip:skip,
+        take:limit
     });
 
-    return AllAgent
+    return {AllAgent, totalPage:Math.ceil(totalAgent/limit), success:true}
 };
 
 const deleteAgent= async({params,user})=>{
-  const {agentId}=params;
-  const {oparetor}=user;
-  const agent= await prisma.agent.findUnique({
-    where:{id:agentId}
+  console.log('Oparetor', user)
+  const {id}=params;
+  const oparetor=Number(user.id);
+    const loginOparetor= await prisma.user.findUnique({
+    where:{id:Number(oparetor)}
   });
-  const loginOparetor= await prisma.user.findUnique({
-    where:{id:oparetor}
+   if(!loginOparetor){throw{message:'Oparetor Not Found',status:404}}
+  
+   const agent= await prisma.agent.findUnique({
+    where:{id:Number(id)}
   });
   if(!agent){throw{message:'Agent Not Found', status:404}}
-  if(!loginOparetor){throw{message:'Oparetor Not Found',status:404}}
+ 
   await prisma.agent.delete({
-    where:{id:agent.id,branch:loginOparetor.branchId}
+    where:{id:agent.id,branchId:loginOparetor.branchId}
   });
-  return{message:'Agent Delete Successfully'}
+  return{message:'Agent Delete Successfully', success:true}
 };
 
-const editAgentInfo=async({body,params,user})=>{
-  const {agentId}=params;
-  const {oparetor}=user;
-  const {newName,newAddress,newPhone,newEmail,newGadgetId,newUserName,newAgentCode}=body
-  const loginOparetor= await prisma.user.findUnique({
-    where:{id:oparetor}
-  });
-  const agent= await prisma.agent.findUnique({
-    where:{id:agentId}
-  });
-  if(!agent){throw{message:'Agent Not Found', status:404}}
-  if(!loginOparetor){throw{message:'Oparetor Not Found',status:404}}
-  await prisma.agent.update({
-    where:{id:agent.id,branchId:loginOparetor.branchId},
-    data:{
-      name:newName,address:newAddress,phone:newPhone,email:newEmail,gadgetId:newGadgetId,agentCode:newAgentCode,userName:newUserName
-    }
-  });
-  return {message:'Agent Information Edited Successfully'}
-}
+
 
 const getAllUnassignedAgentByCashier= async(data)=>{
     const {oparetor}=data;
+    const loginOparetor= await prisma.user.findUnique({
+      where:{id:Number(oparetor)}
+    });
+    if(!loginOparetor){throw{messgae:'Oparetor Not Found', status:404}}
     const allUnassignedAgent= await prisma.agent.findMany({
-        where:{branchId:oparetor.branchId, assignStatus:"NOT_ASSIGNED"},
+        where:{branchId:loginOparetor.branchId, assignStatus:"NOT_ASSIGNED"},
           select:{
-            id:true,name:true, gadgetId:true, assignStatus:true,phone:true,address:true,createdAt:true,updatedAt:true,userName:true,
-            agentCode:true,
+            id:true,name:true, gadgetId:true, assignStatus:true, agentCode:true,
                 }
     });
-    return allUnassignedAgent
+    return {allUnassignedAgent, success:true}
 };
 
 
@@ -140,9 +142,28 @@ return{
    
 };
 
+const getAllCashierByBranch= async(data)=>{
+  const {oparetor}=data
+  const loginOparetor= await prisma.user.findUnique({
+    where:{id:Number(oparetor)}
+  });
+  if(!loginOparetor){throw{message:'Oparetor Not Found'}}
+
+  const allCashier= await prisma.user.findMany({
+    where:{branchId:loginOparetor.branchId, role:'CASHIER'},
+    select:{
+      name:true, id:true
+    }
+  });
+  return {allCashier, success:true}
+}
+
 const addHotNumber= async({body,user})=>{
     const {number,limit,drewTimeId}=body;
     const {oparetor}=user
+    const activeBetSession= await prisma.betSession.findFirst({
+      where:{betSessionStatus:'ACTIVE',drewTimeId:Number(drewTimeId)},
+    })
     if(!number||!limit||!drewTimeId){throw{message:'All Field Required', status:400}}
     if(!oparetor||!oparetor.branchId){throw{messgae:'Oparetor Not Found',status:404}}
     const existing= await prisma.hotNumber.findFirst({
@@ -151,15 +172,19 @@ const addHotNumber= async({body,user})=>{
     if(existing){throw{message:'Hot Number Already Added',status:400}}
     await prisma.hotNumber.create({
         data:{
-            number,limit,branchId:oparetor.branchId,drewTimeId
+            number,limit,branchId:oparetor.branchId,drewTimeId,betSessionId:activeBetSession.id
         }
     });
-    return{message:'Hot Number Addes Successfully'}
+    return{message:'Hot Number Added Successfully'}
 };
 
 const getMostBettingNumber= async({body,user})=>{
      let { branchId, drewTimeId, date} =body
      const {oparetor}=user;
+         const activeBetSession= await prisma.betSession.findFirst({
+      where:{betSessionStatus:{in:['ACTIVE','CUT_OFF']},drewTimeId:Number(drewTimeId)},
+      orderBy:{id:'desc'}
+    })
      if(!oparetor||!oparetor.branchId){throw{message:'Oparetor Not Found',status:404}}
       branchId = branchId ? Number(branchId) : 1
       drewTimeId = drewTimeId ? Number(drewTimeId) : 1
@@ -183,7 +208,7 @@ const getMostBettingNumber= async({body,user})=>{
     const mostBetNumber= await prisma.betNumber.groupBy({
         by:['number'],
         where:{branchId:oparetor.branchId,
-            createdAt:{gte:start,lte:end},drewTimeId
+            createdAt:{gte:start,lte:end},drewTimeId:Number(drewTimeId), betSessionId:activeBetSession.id
         },
         _count:{bettingNumber:true},
         orderBy:{_count:{bettingNumber:'desc'}},
@@ -192,119 +217,12 @@ const getMostBettingNumber= async({body,user})=>{
     return mostBetNumber
 };
 
-const getTotalInOutReportByBranch=async({query,user})=>{
-    let { date } = query
-    let drewTimeId=Number(query.drewTimeId)
-    const{oparetor}=user
-    
-    if(!oparetor||!oparetor.branchId){throw{message:'Oparetor Not Found'}}
-     drewTimeId = drewTimeId ? Number(drewTimeId) : 1
-      
 
-        let start, end;
-
-        if (date) {
-          start = new Date(date);
-          start.setHours(0, 0, 0, 0);
-
-          end = new Date(date);
-          end.setHours(23, 59, 59, 999);
-        } else {
-          start = new Date();
-          start.setHours(0, 0, 0, 0);
-
-          end = new Date();
-          end.setHours(23, 59, 59, 999);
-        }
-
-      const totalInOutAmount = await prisma.transaction.findFirst({
-        where: {
-          createdAt: {
-            gte: start,
-            lte: end,
-          },
-          branchId: oparetor.branchId,
-          drewTimeId: drewTimeId,
-        },
-        select: {
-          totalInAmount: true,
-          totalOutAmount: true,
-        },
-        orderBy:{ createdAt:"desc" }
-     
-      });
-
-      const totalInOutAmountByCashier= await prisma.transaction.findMany({
-        where:{createdAt:{gte:start,lte:end},branchId:oparetor.branchId,drewTimeId,user:{some:{role:'CASHIER'}}},
-        select:{
-            totalInAmount:true,totalOutAmount:true,
-            user:{
-                select:{
-                    id:true,
-                    name:true
-                }
-            },
-         
-        },
-        orderBy:{ createdAt:"desc" }
-      });
-
-     
-
-      return {totalInOutAmount, totalInOutAmountByCashier}
-};
-
-const totalInOutDetailsReportByCashier= async({query,user,params})=>{
-    const {date}=query;
-    const userId=Number(params.userId);
-    const drewTimeId=Number(query.drewTimeId)
-    const {oparetor}=user;
-
- let start, end;
-
-      if (date) {
-        start = new Date(date);
-        start.setHours(0, 0, 0, 0);
-
-        end = new Date(date);
-        end.setHours(23, 59, 59, 999);
-      } else {
-        start = new Date();
-        start.setHours(0, 0, 0, 0);
-
-        end = new Date();
-        end.setHours(23, 59, 59, 999);
-      }
-    if(!oparetor||!oparetor.branchId){throw {message:'Oparetor Not Found'}}
-     const totalReceivedByCashier= await prisma.transaction.findFirst({
-      where:{createdAt:{gte:start,lte:end},branchId:oparetor.branchId,drewTimeId,userId,user:{some:{role:'CASHIER'}},status:'SETELLED'},
-        select:{netRimteAmount},
-      });
-
-      const totalPaidByCashier= await prisma.transaction.findFirst({
-        where:{createdAt:{gte:start,lte:end},branchId:oparetor.branchId,drewTimeId,userId,user:{some:{role:'CASHIER'}},status:'SETELLED'},
-        select:{netPayableAmount}
-      });
-
-      const totalPendingRecivedByCashier=await prisma.transaction.findFirst({
-        where:{createdAt:{gte:start,lte:end},branchId:oparetor.branchId,drewTimeId,userId,user:{some:{role:'CASHIER'}},status:'PENDING'},
-        select:{netRimteAmount},
-         
-      });
-
-      const totalPendingPaidByCashier= await prisma.transaction.findFirst({
-        where:{createdAt:{gte:start,lte:end},branchId:oparetor.branchId,drewTimeId,userId,user:{some:{role:'CASHIER'}},status:'PENDING'},
-         select:{netPayableAmount},
-         
-      });
-
-      return {totalPaidByCashier,totalReceivedByCashier,totalPendingPaidByCashier,totalPendingRecivedByCashier}
-};
 
 const blockedAgentGadget=async(data)=>{
-  const {agentId}=data;
+  const {id}=data;
   const agent= await prisma.agent.findUnique({
-    where:{id:agentId}
+    where:{id:Number(id)}
   });
   if(!agent){throw{message:'Agent Not Found',status:404}}
   await prisma.agent.update({
@@ -313,7 +231,7 @@ const blockedAgentGadget=async(data)=>{
       status:'INACTIVE'
     }
   });
-  return{message:'Agent Gadget Blocked Successfully'}
+  return{message:'Agent Gadget Blocked Successfully', success:true}
 };
 
 const openBetSession=async({body,user})=>{
@@ -363,9 +281,9 @@ const getActiveBetSession=async()=>{
 }
 
 const unblockedAgent=async(data)=>{
-  const {agentId}=data;
+  const {id}=data;
     const agent= await prisma.agent.findUnique({
-    where:{id:agentId}
+    where:{id:Number(id)}
   });
   if(!agent){throw{message:'Agent Not Found',status:404}}
   await prisma.agent.update({
@@ -374,7 +292,7 @@ const unblockedAgent=async(data)=>{
       status:'ACTIVE'
     }
   });
-  return{message:'Agent Gadget Unblocked Successfully'}
+  return{message:'Agent Gadget Unblocked Successfully', success:true}
 
 };
 
@@ -504,7 +422,9 @@ if(!isWin) continue;
       userId:agent.cashierId,
       drewSessionId:activeDrewSession.id,
       betSeesionId:cutOffBetSession.id,
-      userId: agent.cashierId
+      userId: agent.cashierId,
+      bettingFee:betingFee,
+      comissionAmount:comissionAmount
 
     }
    })
@@ -516,8 +436,8 @@ if(!isWin) continue;
         betTrxId:n.betTrxId,
         bettingOption:n.bettingOption,
         transactionId :transaction.id,
-        comissionAmount,
-        betingFee
+        
+        
         
       }
     })
@@ -553,13 +473,229 @@ if(!isWin) continue;
      
 };
 
+const getTotalInOutReportByBranch=async({query,user})=>{
+
+    let { date } = query;
+    let {drewTimeId}=query
+    let {id}=user
+ 
+
+      let start, end;
+
+      if (date) {
+        start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+      } else {
+        start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
+      }
+
+      const loginOparetor= await prisma.user.findUnique({
+        where:{id:Number(id)}
+      });
+
+      const totalInOutAmount = await prisma.transaction.findFirst({
+        where: {
+          createdAt: {
+            gte: start,
+            lte: end,
+          },
+          branchId: loginOparetor.branchId,
+          drewTimeId:Number(drewTimeId) ,
+        },
+        select: {
+          totalInAmount: true,
+          totalOutAmount: true,
+        },
+        orderBy:{ createdAt:"desc" }
+      });
+
+      const reportData= await prisma.transaction.groupBy({
+        by:['userId','status'],
+        where:{createdAt:{gte:start,lte:end},branchId:loginOparetor.branchId,drewTimeId:Number(drewTimeId),user:{role:'CASHIER'}},
+        _sum:{netPayableAmount:true,netRmiteAmount:true}
+      });
+
+      const report= {};
+      reportData.forEach(item=>{if(!report[item.userId]){
+        report[item.userId]={
+             totalIn: 0,
+            totalOut: 0,
+            pendingIn: 0,
+            pendingOut: 0,
+            settledIn: 0,
+            settledOut: 0
+        };}
+    const sumIn = item._sum.netRmiteAmount || 0;
+  const sumOut = item._sum.netPayableAmount || 0;
+
+  report[item.userId].totalIn += sumIn;
+  report[item.userId].totalOut += sumOut;
+
+  if (item.status === 'PENDING') {
+    report[item.userId].pendingIn += sumIn;
+    report[item.userId].pendingOut += sumOut;
+  }
+
+  if (item.status === 'SETTELED') {
+    report[item.userId].settledIn += sumIn;
+    report[item.userId].settledOut += sumOut;
+  }
+
+    });
+
+    const users = await prisma.user.findMany({
+  where: { id: { in: Object.keys(report).map(Number) } },
+  select: { id: true, name: true }
+});
+
+return {totalInOutAmount, users, report ,success:true}
+};
+
+const searchAgent = async ({ user, query }) => {
+  const { agentCode } = query;
+  const { id } = user;
+
+  if (!agentCode) {
+    throw { message: "agentCode required", status: 400 };
+  }
+
+  const cleanCode = agentCode.trim();
+
+  const loginOparetor = await prisma.user.findUnique({
+    where: { id: Number(id) }
+  });
+
+  if (!loginOparetor) {
+    throw { message: "Operator Not Found", status: 404 };
+  }
+
+  const getAgent = await prisma.$queryRaw`
+    SELECT 
+      id, name, assignStatus, phone, address,
+      createdAt, updatedAt, userName, agentCode, status
+    FROM agent
+    WHERE agentCode = ${cleanCode}
+    LIMIT 1
+  `;
+
+  const agent = getAgent[0];
+
+  if (!agent) {
+    throw { message: "Agent not found", status: 404 };
+  }
+
+  return {
+    success: true,
+    getAgent: agent
+  };
+};
+
+const getAllGadgetByBranch=async({user, query})=>{
+  const {id}=user;
+
+
+  const page=Number(query.page)||1;
+  const limit=Number(query.limit)||100;
+  const skip=(page-1)*limit
+      const loginOparetor= await prisma.user.findUnique({
+      where:{id:Number(id)}
+    });
+  const totalAgent= await prisma.agent.count({
+    where:{branchId:loginOparetor.branchId}
+  })
+ 
+    if(!loginOparetor){throw{message:'Oparetor Not Found', status:404}}
+
+    const allGadget=await prisma.agent.findMany({
+        where:{branchId:loginOparetor.branchId},
+        select:{
+            id:true,name:true, gadgetId:true, imeino:true
+        },
+        skip:skip,
+        take:limit
+    });
+
+    return{allGadget,totalPage:Math.ceil(totalAgent/limit), success:true}
+};
+
+const editGadgetByAgent=async({user,params,body})=>{
+  const {id}=params
+  const oparetor=user.id
+  const {gadgetId,imeino}=body
+
+  if(!gadgetId||!imeino){throw{message:'All Fields Required', status:400}}
+  const loginOparetor= await prisma.user.findUnique({
+    where:{id:Number(oparetor)}
+  });
+  if(!loginOparetor){throw{message:'Oparetor Not Found', status:404}}
+
+  const agent= await prisma.agent.findUnique({
+    where:{id:Number(id)}
+  });
+  if(!agent){throw{message:'Agent Not Found',status:404}}
+
+  await prisma.agent.update({
+    where:{id:agent.id, branchId:loginOparetor.branchId},
+    data:{gadgetId,imeino}
+  })
+  return{message:'Agent Gadget Edit Successfully', success:true}
+};
+
+const searchAgentByGadgetId = async ({ user, query }) => {
+  const { gadgetId } = query;
+  const { id } = user;
+
+  if (!gadgetId) {
+    throw { message: "Gadget Id required", status: 400 };
+  }
+
+  const cleanCode = gadgetId.trim();
+
+  const loginOparetor = await prisma.user.findUnique({
+    where: { id: Number(id) }
+  });
+
+  if (!loginOparetor) {
+    throw { message: "Operator Not Found", status: 404 };
+  }
+
+  const getGadget = await prisma.$queryRaw`
+    SELECT 
+      id, name,gadgetId,imeino
+    FROM agent
+    WHERE gadgetId = ${cleanCode}
+    LIMIT 1
+  `;
+
+  const gadget = getGadget[0];
+
+  if (!gadget) {
+    throw { message: "Agent not found", status: 404 };
+  }
+
+  return {
+    success: true,
+    getGadget: gadget
+  };
+};
+
+
+
+
 
 
 
 
 
 module.exports={addAgent,getAllAgentByBranch,getAllAssignedAgentByCashier,getAllUnassignedAgentByCashier,assignAgent,unassignAgent,addHotNumber,
-    getMostBettingNumber,totalInOutDetailsReportByCashier,getTotalInOutReportByBranch,blockedAgentGadget,unblockedAgent,openBetSession,closeBetSession,getActiveBetSession,
-    drewResult,deleteAgent,editAgentInfo
+    getMostBettingNumber,blockedAgentGadget,unblockedAgent,openBetSession,closeBetSession,getActiveBetSession, getAllCashierByBranch,
+    drewResult,deleteAgent,getTotalInOutReportByBranch, searchAgent,getAllGadgetByBranch,editGadgetByAgent,searchAgentByGadgetId
 
 }

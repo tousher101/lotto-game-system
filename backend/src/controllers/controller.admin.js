@@ -71,12 +71,7 @@ const addNewBranchControll=async(req,res)=>{
     }catch(err){console.error(err); return res.status(err.status||500).json({msg:err.message|| 'Server Error'})}
 };
 
-const editBranchControll=async(req,res)=>{
-    try{
-        const result= await serviceAdmin.editBranch({body:req.body,params:req.params})
-        res.status(200).json(result)
-    }catch(err){console.error(err); return res.status(err.status||500).json({msg:err.message|| 'Server Error'})}
-};
+
 
 const addNewDrawTimeControll= async(req,res)=>{
     try{
@@ -130,19 +125,8 @@ const getAllDrawTimeControll=async(req,res)=>{
     }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
 };
 
-const getAllCashierByBranchControll=async(res,req)=>{
-    try{
-        const result=await serviceAdmin.getAllCashierByBranch(req.query)
-        res.status(200).json(result)
-    }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
-};
 
-const getAllAgentByBranchControll=async(req,res)=>{
-    try{
-        const result= await serviceAdmin.getAllAgentByBranch(req.query)
-        res.status(200).json(result)
-    }catch(err){console.error(err); return res.status(500).json({msg: 'Server Error'})}
-};
+
 
 
 
@@ -150,8 +134,8 @@ const getAllAgentByBranchControll=async(req,res)=>{
 
 
 module.exports={addOparetorControll,addHeadCashierControll,addCashierControll,getAllOparetorControll,getAllHeadCashierControll,
-getAllCashierControll,deleteOparetorControll,deleteHeadCashierControll,deleteCashierControll,addNewBranchControll, editBranchControll,
-addNewDrawTimeControll,editDrawTimeControll,getAllAgentByBranchControll ,getTotalInOutReportByBranchControll,getAllAgentReportControll,
-getAgentDetailsReportControll,getAllBranchesControll, getAllDrawTimeControll,getAllCashierByBranchControll
+getAllCashierControll,deleteOparetorControll,deleteHeadCashierControll,deleteCashierControll,addNewBranchControll,
+addNewDrawTimeControll,editDrawTimeControll ,getTotalInOutReportByBranchControll,getAllAgentReportControll,
+getAgentDetailsReportControll,getAllBranchesControll, getAllDrawTimeControll
 
 }

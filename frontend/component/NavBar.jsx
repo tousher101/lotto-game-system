@@ -13,12 +13,10 @@ export default function NavBar(){
     const [msg,setMsg]=useState(null);
     const [type,setType]=useState(null);
     const BASEURL=process.env.NEXT_PUBLIC_API_URI
-    const router=useRouter();
+ 
     const {userInfo,getAllUser}=useUserInfo();
 
-    const goHome=()=>{
-        router.push('/')
-    }
+ 
 
     const logOut=async()=>{
         try{
@@ -30,8 +28,7 @@ export default function NavBar(){
                 }
             });
             const data=await res.json();
-            if(res.ok){setMsg(data.message);setType('Success'); getAllUser(); localStorage.removeItem('token'); setTimeout(()=>{
-                goHome()}),200} else{throw new Error(data.msg||data.message)}
+            if(res.ok){setMsg(data.message);setType('Success'); getAllUser(); sessionStorage.removeItem('token');window.location.href=('/')} else{throw new Error(data.msg||data.message)}
         }catch(err){console.error(err); setMsg(err.message);setType('Error')};
 
         setOpenModal(false);

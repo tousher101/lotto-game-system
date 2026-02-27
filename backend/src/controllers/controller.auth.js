@@ -12,9 +12,18 @@ const loginControl= async(req,res)=>{
     try{
         
     const result= await authService.login(req.body);
-    res.cookie('refreshToken',result.refreshToken,{httpOnly:true, secure:false, sameSite:'Lax',path:'/', maxAge: 7*24*60*60*1000})
+    res.cookie('refreshToken',result.refreshToken,{httpOnly:true, secure:false, sameSite:'Lax',path:'/'})
         res.status(200).json({message:'Login Successful', result})
     }catch(err){console.error(err); return res.status(err.status||500).json({msg:err.message|| 'Server Error'})}
+};
+
+const logOutControll= async(req,res)=>{
+try{
+    res.clearCookie('refreshToken',{
+        httpOnly:true, secure:false, sameSite:'Lax',path:'/'
+    });
+    res.status(200).json({message:'LogOut Successful'})
+}catch(err){console.error(err); return res.status(err.status||500).json({msg:err.message|| 'Server Error'})}
 };
 
 const refreshControl=async(req,res)=>{
@@ -45,14 +54,7 @@ const userForgetPasswordControll=async(req,res)=>{
     }catch(err){console.error(err); return res.status(err.status||500).json({msg:err.message|| 'Server Error'})}
 };
 
-const logOutControll= async(req,res)=>{
-try{
-    res.clearCookie('refreshToken',{
-        httpOnly:true, secure:false, sameSite:'Lax',path:'/'
-    });
-    res.status(200).json({message:'LogOut Successful'})
-}catch(err){console.error(err); return res.status(err.status||500).json({msg:err.message|| 'Server Error'})}
-};
+
 
 const getAllUserInfoControll=async(req,res)=>{
     try{

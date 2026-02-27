@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `agent` ADD COLUMN `imeino` VARCHAR(191) NOT NULL DEFAULT '';

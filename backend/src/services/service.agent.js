@@ -16,7 +16,7 @@ const bettingByAgent=async({user,body})=>{
     if(!drewTimeId||!Array.isArray(number)){throw{message:'All Fields Required', status:400}}
 
     const activeBetSession= await prisma.betSession.findFirst({
-        where:{betSessionStatus:"ACTIVE",branchId:loginAgent.branchId}
+        where:{betSessionStatus:"ACTIVE",branchId:loginAgent.branchId,drewTimeId:Number(drewTimeId)}
     });
     if(!activeBetSession){throw{messgae:'Betting not active'}}
     if(activeBetSession.betSessionStatus==='CUT_OFF'){throw{message:'Betting Closed',status:400}}

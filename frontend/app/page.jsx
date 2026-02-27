@@ -4,9 +4,10 @@ import stlLogo from '../public/stl-logo.png'
 import Link from "next/link";
 import visiableEye from '../public/visibility.png'
 import notVisiableEye from '../public/eye.png'
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Alert from "../utils/Alert";
 import { useUserInfo } from "../context/userInfoContext";
+import { useRouter } from "next/navigation";
 
 export default function Loging(){
   const [openEye,setOpenEye]=useState('hidden');
@@ -17,11 +18,14 @@ export default function Loging(){
   const BASEURI=process.env.NEXT_PUBLIC_API_URI;
   const [userName, setUserName]=useState('');
   const [password, setPassword]=useState('');
-  const {getAllUser}=useUserInfo();
+  const {getAllUser,userInfo}=useUserInfo();
+  const router=useRouter()
 
   const handleShowPass=()=>{
     if(openEye==='hidden'){setCloseEye('hidden'); setOpenEye('block'); setShowPass('text')} else{setOpenEye('hidden'); setCloseEye('block'); setShowPass('password')}
   };
+
+
 
   const login=async()=>{
     try{
@@ -37,7 +41,8 @@ export default function Loging(){
       
       
       if(res.ok){
-        setMsg(data.message);setType('Success'); localStorage.setItem('token',data.result.accessToken);getAllUser()
+        setMsg(data.message);setType('Success'); sessionStorage.setItem('token',data.result.accessToken)
+        ;sessionStorage.setItem('role',data.result.payload.role);getAllUser()
         if(data.result.payload.role==='ADMIN'){window.location.href=('/admindashboard')}
         if(data.result.payload.role==='OPARETOR'){window.location.href=('/oparetordashboard')}
         if(data.result.payload.role==='HEAD_CASHIER'){window.location.href=('/head-cashierdashboard')}
@@ -51,6 +56,17 @@ export default function Loging(){
     login();
     setPassword(''); setUserName('')
   }
+
+    useEffect(()=>{
+const role= sessionStorage.getItem('role');
+const token= sessionStorage.getItem('token')
+if(token&&role){
+  if(role==='ADMIN'){router.replace('/admindashboard');}
+  else if(role==='OPARETOR'){router.replace('/oparetordashboard');}
+  else if(role==='HEAD_CASHIER'){router.replace('/head-cashierdashboard');}
+  else if (role==='CASHIER'){router.replace('/cashierdashboard')}
+}
+  },[])
 
 
   return(

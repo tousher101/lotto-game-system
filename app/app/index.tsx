@@ -1,11 +1,14 @@
 
 import logo from '@/assets/images/stl-logo.jpg'
+import DeviceIdScreen from '@/components/deviceInfoModal'
+import { agentUserInfo } from '@/context/agentInfo'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { ActivityIndicator, Image, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import DeviceInfo from 'react-native-device-info'
 import Toast from 'react-native-root-toast'
 
 export default function LoginScreen(){
@@ -13,11 +16,13 @@ const [secure,setSecure]=useState(true);
 const [loading,setLoading]=useState(false);
 const [userName, setUserName]=useState('');
 const [password, setPassword]=useState('');
+const [openModal, setOpenModal]=useState(false);
 const BASEURI=process.env.EXPO_PUBLIC_BASE_URL;
 const router=useRouter();
+const {agentInfo}=agentUserInfo();
+
 
 const fetchLogin=async()=>{
-   
     try{
         setLoading(true)
         const res= await fetch(`${BASEURI}/api/auth/agentlogin`,{
@@ -32,7 +37,7 @@ const fetchLogin=async()=>{
         
         if(res.ok){Toast.show(data.message || data.msg ||'Login Success!',{
             duration:Toast.durations.SHORT, position:Toast.positions.TOP,backgroundColor:'green'
-        }); await AsyncStorage.setItem('token',data.accessToken)} else{
+        }); await AsyncStorage.setItem('token',data.accessToken) ; router.replace('/(tabs)')} else{
             throw new Error(data.message||data.msg||'Login Failed')
         }
         
@@ -43,12 +48,15 @@ const fetchLogin=async()=>{
 }
 
 const handleSubmit=()=>{
-
-router.replace('/(tabs)')
+if(agentInfo.gadgetId!==DeviceInfo.getUniqueId()){Toast.show('This Account is Not Assign for this Device',{
+    duration:Toast.durations.SHORT, position:Toast.positions.TOP,backgroundColor:'red'
+        }); return}
+fetchLogin()
 }
 
 
     return(
+        <>
          <LinearGradient colors={["#362F4F","#25343F"]} className='flex-1 justify-center px-6'>
             <View className='bg-white/90 p-6 rounded-3xl shadow-xl'>
            <View className=' items-center mb-[15px]'>
@@ -73,8 +81,11 @@ router.replace('/(tabs)')
                 {loading?(<ActivityIndicator color='white'/>):(<Text className=' text-white font-bold text-lg'>Login</Text>)}
             </TouchableOpacity>
 
-     
             </View>
+            <TouchableOpacity onPress={()=>{setOpenModal(true)}} className='bg-green-600 py-4 rounded-xl items-center absolute bottom-0 left-0 right-0 '><Text className='font-bold'>Device Information</Text></TouchableOpacity>
         </LinearGradient>
+
+         <DeviceIdScreen open={openModal}/>
+        </>
     )
 }

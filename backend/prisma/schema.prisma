@@ -38,7 +38,8 @@ model Agent {
   address String
   phone String
   email String?
-  gadgetId String
+  gadgetId String 
+  imeino String @default("")
   agentCode String
   userName String @unique
   password String
@@ -85,7 +86,7 @@ model Branch {
 
 model Drewtime {
   id Int @id @default(autoincrement())
-  time Int
+  time String
   timePost String
   betting Betting[]
   drewResult DrewResult[]
@@ -135,6 +136,8 @@ model BetNumber {
   agentId Int
   drewTime Drewtime @relation(fields:[drewTimeId],references:[id])
   drewTimeId Int
+  betSession BetSession @relation(fields:[betSessionId],references:[id])
+  betSessionId Int
  
 
   @@index([bettingId, agentId])
@@ -261,6 +264,7 @@ model BetSession{
   hotNumber HotNumber[]
   betting Betting []
   transaction Transaction []
+  betNumber BetNumber []
   createdAt DateTime @default(now())
  
 }
